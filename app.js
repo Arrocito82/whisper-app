@@ -1,9 +1,11 @@
 //jshint esversion:6
+require('dotenv').config();
+
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const express = require('express');
 const mongoose = require('mongoose');
-
+var encrypt = require('mongoose-encryption');
 //server
 const app = express();
 
@@ -21,7 +23,7 @@ mongoose.connect(uri, {
 });
 
 //database schemas
-const userSchema = {
+const userSchema = new mongoose.Schema({
     email: {
         type: String,
         require: true
@@ -31,7 +33,11 @@ const userSchema = {
         require:true
     }
 
-}
+});
+
+// we have to add the encryption before defining the model
+
+userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password']  });
 
 const User=mongoose.model('User',userSchema);
 let juan=new User({email:'example@gmail.com',password:'password'});
