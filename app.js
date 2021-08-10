@@ -16,7 +16,7 @@ app.use(bodyParser.urlencoded({
 }));
 
 //connecting to database
-const uri = "mongodb+srv://admin:AECa6Br9n683rst@cluster0.b8koz.mongodb.net/userDB?retryWrites=true&w=majority";
+const uri = "mongodb+srv://admin:"+process.env.MONGO_KEY+"@cluster0.b8koz.mongodb.net/userDB?retryWrites=true&w=majority";
 mongoose.connect(uri, {
     useNewUrlParser: true,
     useUnifiedTopology: true
