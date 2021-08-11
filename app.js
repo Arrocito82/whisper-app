@@ -1,5 +1,13 @@
 //jshint esversion:6
+
+//for encrypting passwords
 require('dotenv').config();
+
+
+//for hashing passwords with salting
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
 
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
@@ -35,14 +43,8 @@ const userSchema = new mongoose.Schema({
 
 });
 
-// we have to add the encryption before defining the model
-
-userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password']  });
 
 const User=mongoose.model('User',userSchema);
-let juan=new User({email:'example@gmail.com',password:'password'});
-// juan.save();
-
 
 
 // route handlers
@@ -56,7 +58,9 @@ app.route('/login')
     response.render('login');
 })
 .post(function (req,res) {
+    //retrieve provided password
     const password=req.body.password;
+
     User.findOne({
         email: req.body.username
     },
@@ -64,10 +68,16 @@ app.route('/login')
         if(err){
             console.log(err);
         }else if(foundUser){
-            if(foundUser.password===password){
-                
-                res.render('secrets');  
-            }
+            //retrieve hashed password from DB
+            const hash=foundUser.password;
+
+            bcrypt.compare(password, hash, function(err, result) {
+           
+                if(result){
+                    
+                    res.render('secrets');  
+                }
+            });
         }
 
     });
@@ -81,17 +91,24 @@ app.route('/register')
 })
 .post(function (req,res) {
 
-    const newUser=new User({
-        email: req.body.username,
-        password:req.body.password
-    });
-    newUser.save(function (err) {
-        if(err){
-            console.log(err);
-        }else{
-            res.render('secrets');
+    const password=req.body.password;
 
-        }
+    bcrypt.hash(password, saltRounds, function(err, hash) {
+        // Store user in DB.
+        if(!err){
+        const newUser=new User({
+            email: req.body.username,
+            password:hash
+        });
+        newUser.save(function (error) {
+            if(error){
+                console.log(error);
+            }else{
+                res.render('secrets');
+    
+            }
+        });
+    }
     });
 });
 
