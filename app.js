@@ -3,17 +3,15 @@
 //for encrypting passwords
 require('dotenv').config();
 
-
-//for hashing passwords with salting
-const bcrypt = require('bcrypt');
-const saltRounds = 10;
-
-
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const express = require('express');
 const mongoose = require('mongoose');
-var encrypt = require('mongoose-encryption');
+const session = require('express-session');
+const passport = require('passport');
+const passportLocalMongoose = require('passport-local-mongoose');
+
+
 //server
 const app = express();
 
@@ -23,12 +21,24 @@ app.use(bodyParser.urlencoded({
     extended: true
 }));
 
+app.use(session({
+    secret:'thatisn;ttrue.',
+    resave:false,
+    saveUninitialized:false
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
 //connecting to database
 const uri = "mongodb+srv://admin:"+process.env.MONGO_KEY+"@cluster0.b8koz.mongodb.net/userDB?retryWrites=true&w=majority";
 mongoose.connect(uri, {
     useNewUrlParser: true,
     useUnifiedTopology: true
-});
+}).catch(error=> console.log(`Database Connection Failed! ${error}`));
+
+mongoose.set("useCreateIndex",true);
+
 
 //database schemas
 const userSchema = new mongoose.Schema({
@@ -43,9 +53,13 @@ const userSchema = new mongoose.Schema({
 
 });
 
+userSchema.plugin(passportLocalMongoose);
 
 const User=mongoose.model('User',userSchema);
 
+passport.use(User.createStrategy());
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
 // route handlers
 app.get('/', function (request, response) {
@@ -58,29 +72,7 @@ app.route('/login')
     response.render('login');
 })
 .post(function (req,res) {
-    //retrieve provided password
-    const password=req.body.password;
-
-    User.findOne({
-        email: req.body.username
-    },
-    function (err,foundUser) {
-        if(err){
-            console.log(err);
-        }else if(foundUser){
-            //retrieve hashed password from DB
-            const hash=foundUser.password;
-
-            bcrypt.compare(password, hash, function(err, result) {
-           
-                if(result){
-                    
-                    res.render('secrets');  
-                }
-            });
-        }
-
-    });
+   
 });
 
 
@@ -91,25 +83,6 @@ app.route('/register')
 })
 .post(function (req,res) {
 
-    const password=req.body.password;
-
-    bcrypt.hash(password, saltRounds, function(err, hash) {
-        // Store user in DB.
-        if(!err){
-        const newUser=new User({
-            email: req.body.username,
-            password:hash
-        });
-        newUser.save(function (error) {
-            if(error){
-                console.log(error);
-            }else{
-                res.render('secrets');
-    
-            }
-        });
-    }
-    });
 });
 
 
